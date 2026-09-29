@@ -1,0 +1,291 @@
+/* ============================================================
+   Attendance & Certificate Form Styles
+   Directly matching index.html design tokens and aesthetics
+   ============================================================ */
+
+:root {
+  --att-bg: #08080B;
+  --att-card: #0F0F13;
+  --att-field: #17171C;
+  --att-line: #26262D;
+  --att-text: #F4F4F6;
+  --att-muted: #8B8B96;
+  --att-accent: #6C63FF;
+  --att-accent-soft: rgba(108, 99, 255, 0.14);
+  --att-green: #34D399;
+  --att-green-soft: rgba(52, 211, 153, 0.12);
+  --att-cyan: #22D3EE;
+  --att-cyan-soft: rgba(34, 211, 238, 0.12);
+  --att-amber: #F59E0B;
+  --att-amber-soft: rgba(245, 158, 11, 0.12);
+  --att-error: #F87171;
+}
+
+.att-page-wrap {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.att-card {
+  background: var(--att-card);
+  border: 1px solid var(--att-line);
+  border-radius: 24px;
+  padding: 32px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.att-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.att-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+}
+
+.att-badge.green {
+  background: var(--att-green-soft);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: var(--att-green);
+}
+
+.att-badge.cyan {
+  background: var(--att-cyan-soft);
+  border-color: rgba(34, 211, 238, 0.35);
+  color: var(--att-cyan);
+}
+
+.att-badge.amber {
+  background: var(--att-amber-soft);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: var(--att-amber);
+}
+
+.att-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--att-text);
+}
+
+.att-card-note {
+  font-family: var(--font-ibm-plex-mono), 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--att-muted);
+  margin: 4px 0 0;
+}
+
+.att-field {
+  margin-bottom: 20px;
+}
+
+.att-field:last-child {
+  margin-bottom: 0;
+}
+
+.att-lbl {
+  display: block;
+  font-family: var(--font-ibm-plex-mono), 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--att-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.att-lbl .req {
+  color: var(--att-accent);
+}
+
+.att-input-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.att-input-wrap svg {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--att-muted);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.att-input {
+  display: block;
+  width: 100% !important;
+  height: 52px !important;
+  padding: 0 16px 0 46px !important;
+  font-size: 14.5px !important;
+  font-family: inherit !important;
+  color: var(--att-text) !important;
+  background-color: var(--att-field) !important;
+  border: 1px solid var(--att-line) !important;
+  border-radius: 14px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.att-input-no-icon {
+  display: block;
+  width: 100% !important;
+  height: 52px !important;
+  padding: 0 16px !important;
+  font-size: 14.5px !important;
+  font-family: inherit !important;
+  color: var(--att-text) !important;
+  background-color: var(--att-field) !important;
+  border: 1px solid var(--att-line) !important;
+  border-radius: 14px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.att-input::placeholder,
+.att-input-no-icon::placeholder {
+  color: #5A5A65 !important;
+  opacity: 1 !important;
+}
+
+.att-input:focus,
+.att-input-no-icon:focus {
+  outline: none !important;
+  border-color: var(--att-accent) !important;
+  box-shadow: 0 0 0 3px var(--att-accent-soft) !important;
+}
+
+/* Course and Preset Pills */
+.att-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.att-pill {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  display: inline-block;
+  margin: 0;
+}
+
+.att-pill input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.att-pill span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--att-muted);
+  background: var(--att-field);
+  border: 1px solid var(--att-line);
+  border-radius: 12px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  box-sizing: border-box;
+}
+
+.att-pill:hover span {
+  color: var(--att-text);
+  border-color: #3A3A44;
+}
+
+.att-pill input:checked + span {
+  color: #ffffff;
+  background: var(--att-accent-soft);
+  border-color: var(--att-accent);
+  box-shadow: 0 0 0 1px var(--att-accent);
+}
+
+.att-pill input:focus-visible + span {
+  outline: 2px solid var(--att-accent);
+  outline-offset: 2px;
+}
+
+/* Event preset chips */
+.att-preset-pill span {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12.5px;
+  border-radius: 10px;
+}
+
+/* Submit Button */
+.att-submit-btn {
+  width: 100% !important;
+  height: 54px !important;
+  margin-top: 6px !important;
+  font-size: 15.5px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  background: var(--att-accent) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  cursor: pointer !important;
+  transition: filter 0.15s, transform 0.05s, box-shadow 0.15s !important;
+  box-shadow: 0 4px 16px rgba(108, 99, 255, 0.25) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.att-submit-btn:hover:not(:disabled) {
+  filter: brightness(1.1) !important;
+  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.35) !important;
+}
+
+.att-submit-btn:active:not(:disabled) {
+  transform: translateY(1px) !important;
+}
+
+.att-submit-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: default !important;
+}
+
+.att-submit-btn:focus-visible {
+  outline: 2px solid var(--att-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Calendar icon inside date input */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+
+@media (max-width: 540px) {
+  .att-card {
+    padding: 22px 18px;
+    border-radius: 20px;
+  }
+}
