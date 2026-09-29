@@ -3,9 +3,7 @@
 // ============================================================
 //
 // Generates a single certificate PDF and returns it for download.
-//
-// Phase 1: No database, no auth — direct PDF generation.
-// Phase 2+: Will add database storage, auth, and duplicate checks.
+// Enforces a strict 1-email → 1-certificate policy.
 //
 // ============================================================
 
@@ -84,6 +82,38 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // ── Duplicate-email guard ─────────────────────────────────
+    // Enforce 1 email → 1 certificate. Check before any PDF work.
+    const emailToCheck = body.participantEmail?.trim().toLowerCase();
+    if (emailToCheck) {
+      try {
+        const { getAdminClient } = await import("@/lib/supabase/admin");
+        const supabase = getAdminClient();
+        if (supabase) {
+          const { data: existing } = await supabase
+            .from("certificates")
+            .select("certificate_id")
+            .eq("metadata->>studentEmail", emailToCheck)
+            .maybeSingle();
+
+          if (existing) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: `A certificate has already been issued to this email address. Certificate ID: ${existing.certificate_id}`,
+                data: { certificateId: existing.certificate_id },
+              } satisfies ApiResponse,
+              { status: 409 }
+            );
+          }
+        }
+      } catch (dupErr) {
+        console.warn("[API/generate] Duplicate-check error (non-fatal):", dupErr);
+        // Non-fatal: proceed with generation if the check itself fails
+      }
+    }
+    // ─────────────────────────────────────────────────────────
 
     // Generate certificate PDF
     const result = await generateCertificatePdf({

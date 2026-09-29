@@ -8,7 +8,7 @@ import {
   Check,
   Copy,
   ExternalLink,
-  ShieldCheck,
+  Download,
   Calendar,
   Sparkles,
   RotateCcw,
@@ -51,11 +51,30 @@ const EVENT_PRESETS = [
   "Serverless Architecture Day",
 ];
 
+function formatEventDate(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    if (y && m && d) {
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr;
+}
+
 export default function Home() {
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [lastCertificateId, setLastCertificateId] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -75,6 +94,7 @@ export default function Home() {
     setForm(DEFAULT_FORM);
     setErrorMsg("");
     setLastCertificateId(null);
+    setPdfBlob(null);
     setSubmitted(false);
   };
 
@@ -114,6 +134,22 @@ export default function Home() {
         }),
       });
 
+      if (response.status === 409) {
+        // Duplicate email — a certificate was already issued
+        const data = await response.json().catch(() => null);
+        const existingId: string | undefined = data?.data?.certificateId;
+        setErrorMsg(
+          existingId
+            ? `A certificate has already been issued to this email.\nCertificate ID: ${existingId}`
+            : "A certificate has already been issued to this email address."
+        );
+        if (existingId) {
+          setLastCertificateId(existingId);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.error || `Generation failed (${response.status})`);
@@ -122,24 +158,35 @@ export default function Home() {
       const certificateId = response.headers.get("X-Certificate-Id");
       setLastCertificateId(certificateId);
 
-      // Download the generated PDF
+      // Store the generated PDF blob for on-demand download
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${certificateId || "certificate"}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setPdfBlob(blob);
 
       setSubmitted(true);
-      toast.success("Attendance marked & certificate generated!");
+      toast.success("Attendance marked & certificate ready!");
     } catch (error: any) {
       console.error("Submission failed:", error);
       setErrorMsg("Could not submit — " + (error.message || "please try again."));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadCertificate = () => {
+    if (!lastCertificateId) return;
+
+    if (pdfBlob) {
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${lastCertificateId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Certificate downloaded!");
+    } else {
+      toast.info("Certificate already downloaded.");
     }
   };
 
@@ -160,10 +207,10 @@ export default function Home() {
   if (submitted) {
     return (
       <div
-        className="min-h-screen flex justify-center text-[#F4F4F6]"
+        className="min-h-screen flex items-center justify-center text-[#F4F4F6]"
         style={{
           background: `
-            radial-gradient(600px 300px at 15% 0%, rgba(108,99,255,0.18), transparent 70%),
+            radial-gradient(600px 300px at 50% 0%, rgba(108,99,255,0.18), transparent 70%),
             linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px) 0 0/44px 44px,
             linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px) 0 0/44px 44px,
             #08080B
@@ -171,24 +218,19 @@ export default function Home() {
           padding: "48px 16px",
         }}
       >
-        <div className="att-page-wrap">
-          {/* Header */}
-          <header className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(108,99,255,0.1)] border border-[rgba(108,99,255,0.25)] text-xs text-[#A78BFA] font-medium mb-3">
+        <div style={{ width: "100%", maxWidth: "440px" }}>
+          {/* Brand Tag */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(108,99,255,0.1)] border border-[rgba(108,99,255,0.25)] text-xs text-[#A78BFA] font-medium">
               <Award className="w-3.5 h-3.5 text-[#6C63FF]" />
               <span>AWS Student Builder Group • Tulas University</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-              You&apos;re Marked Present
-            </h1>
-            <p className="text-sm text-[#8B8B96] max-w-md mx-auto">
-              Your attendance has been recorded and your certificate is ready.
-            </p>
-          </header>
+          </div>
 
-          {/* Success Card */}
-          <div className="att-card text-center !p-10">
-            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center bg-[rgba(52,211,153,0.12)] border border-[rgba(52,211,153,0.35)] text-[#34D399]">
+          {/* Card */}
+          <div className="att-card text-center !p-8 sm:!p-9">
+            {/* ✓ Icon */}
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-[rgba(52,211,153,0.12)] border border-[rgba(52,211,153,0.35)] text-[#34D399]">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -196,38 +238,101 @@ export default function Home() {
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="w-8 h-8"
+                className="w-7 h-7"
               >
                 <path d="m5 12 5 5L20 7" />
               </svg>
             </div>
+
+            {/* Attendance Confirmed */}
             <h2 className="text-2xl font-bold text-white mb-2">
-              Attendance &amp; Certificate Confirmed
+              Attendance Confirmed
             </h2>
-            <p className="text-[#8B8B96] text-sm leading-relaxed mb-6">
-              Thank you, <strong className="text-white">{form.name}</strong> ({form.enrollmentNo}). Your official credential PDF has been downloaded.
-            </p>
 
-            {lastCertificateId && (
-              <div className="space-y-5">
-                <div className="p-4 rounded-xl bg-[#17171C] border border-[#26262D] max-w-sm mx-auto">
-                  <div className="text-[11px] uppercase tracking-wider text-[#8B8B96] mb-1 font-mono">
-                    Official Certificate ID
-                  </div>
-                  <div className="font-mono text-lg font-bold text-[#6C63FF]">
-                    {lastCertificateId}
-                  </div>
+            {/* Personalized Message */}
+            <div className="text-sm leading-relaxed mb-5">
+              <p className="text-white font-medium text-[15px]">
+                Thank you, {form.name}!
+              </p>
+              <p className="text-[#8B8B96] mt-0.5">
+                Your certificate is ready.
+              </p>
+            </div>
+
+            {/* Event Summary Box */}
+            <div className="p-4 rounded-xl bg-[#17171C]/90 border border-[#26262D] text-left mb-4 space-y-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-[#8B8B96] font-mono font-medium mb-0.5">
+                  EVENT
                 </div>
+                <div className="text-[13.5px] font-semibold text-white">
+                  {form.eventTitle || "Cloud Kickstart 2026"}
+                </div>
+              </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-[#8B8B96] font-mono font-medium mb-0.5">
+                  DATE
+                </div>
+                <div className="text-[13px] text-[#D1D1DB] font-medium">
+                  {formatEventDate(form.eventDate)}
+                </div>
+              </div>
+            </div>
+
+            {/* Certificate ID Box */}
+            {lastCertificateId && (
+              <div className="p-3.5 rounded-xl bg-[#17171C] border border-[#26262D] mb-5">
+                <div className="text-[10.5px] uppercase tracking-wider text-[#8B8B96] mb-1 font-mono font-medium">
+                  CERTIFICATE ID
+                </div>
+                <div className="font-mono text-base sm:text-lg font-bold text-[#6C63FF] tracking-wider select-all">
+                  {lastCertificateId}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons Stack */}
+            <div className="space-y-3">
+              {/* Primary CTA: Download Certificate */}
+              <button
+                type="button"
+                onClick={handleDownloadCertificate}
+                className="w-full h-12 rounded-xl text-sm font-semibold bg-[#6C63FF] hover:brightness-110 active:scale-[0.99] text-white flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(108,99,255,0.25)] transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Certificate</span>
+              </button>
+
+              {/* Secondary CTA: Verify Certificate */}
+              {lastCertificateId && (
+                <Link
+                  href={`/verify/${lastCertificateId}`}
+                  target="_blank"
+                  className="w-full h-12 rounded-xl text-sm font-semibold bg-[#17171C] hover:bg-[#1f1f26] active:scale-[0.99] text-[#F4F4F6] border border-[#26262D] hover:border-[#3A3A44] flex items-center justify-center gap-2 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4 text-[#8B8B96]" />
+                  <span>Verify Certificate</span>
+                </Link>
+              )}
+
+              {/* Utility actions */}
+              {lastCertificateId && (
+                <div className="flex items-center justify-center gap-5 pt-3">
                   <button
                     type="button"
                     onClick={() => copyToClipboard(lastCertificateId, "id")}
-                    className="h-10 px-4 rounded-xl text-xs font-semibold bg-[#17171C] hover:bg-[#1f1f26] text-[#F4F4F6] border border-[#26262D] flex items-center gap-2 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#8B8B96] hover:text-[#F4F4F6] transition-colors cursor-pointer"
                   >
-                    {copiedId ? <Check className="w-4 h-4 text-[#34D399]" /> : <Copy className="w-4 h-4" />}
-                    {copiedId ? "Copied" : "Copy ID"}
+                    {copiedId ? (
+                      <Check className="w-3.5 h-3.5 text-[#34D399]" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{copiedId ? "Copied ID" : "Copy ID"}</span>
                   </button>
+
+                  <span className="text-[#26262D]">•</span>
 
                   <button
                     type="button"
@@ -235,33 +340,17 @@ export default function Home() {
                       const url = `${window.location.origin}/verify/${lastCertificateId}`;
                       copyToClipboard(url, "link");
                     }}
-                    className="h-10 px-4 rounded-xl text-xs font-semibold bg-[#17171C] hover:bg-[#1f1f26] text-[#F4F4F6] border border-[#26262D] flex items-center gap-2 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#8B8B96] hover:text-[#F4F4F6] transition-colors cursor-pointer"
                   >
-                    {copiedLink ? <Check className="w-4 h-4 text-[#34D399]" /> : <Copy className="w-4 h-4" />}
-                    {copiedLink ? "Copied" : "Copy Verification Link"}
+                    {copiedLink ? (
+                      <Check className="w-3.5 h-3.5 text-[#34D399]" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{copiedLink ? "Copied Link" : "Copy Verification Link"}</span>
                   </button>
-
-                  <Link
-                    href={`/verify/${lastCertificateId}`}
-                    target="_blank"
-                    className="h-10 px-4 rounded-xl text-xs font-semibold bg-[#6C63FF] hover:brightness-110 text-white flex items-center gap-2 transition-all"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Verify Online
-                  </Link>
                 </div>
-              </div>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-[#26262D] flex justify-center">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 text-xs text-[#8B8B96] hover:text-[#F4F4F6] transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Submit another response
-              </button>
+              )}
             </div>
           </div>
         </div>
@@ -575,22 +664,23 @@ export default function Home() {
 
           {/* Error Message */}
           {errorMsg && (
-            <p className="text-sm mt-3.5 leading-relaxed text-center text-[#F87171]">
-              {errorMsg}
-            </p>
+            <div className="mt-3.5 text-center">
+              <p className="text-sm leading-relaxed text-[#F87171] whitespace-pre-line">
+                {errorMsg}
+              </p>
+              {lastCertificateId && (
+                <Link
+                  href={`/verify/${lastCertificateId}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-[#6C63FF] hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View existing certificate →
+                </Link>
+              )}
+            </div>
           )}
         </form>
-
-        {/* Verification Link */}
-        <div className="mt-7 text-center">
-          <Link
-            href="/verify/AWS-SBG-2026-HYUFKG"
-            className="inline-flex items-center gap-1.5 text-xs text-[#8B8B96] hover:text-[#F4F4F6] transition-colors"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#34D399]" />
-            Already have a certificate? Verify it here →
-          </Link>
-        </div>
       </div>
     </div>
   );
